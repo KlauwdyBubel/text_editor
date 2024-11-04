@@ -1,0 +1,208 @@
+[gd_scene load_steps=9 format=3 uid="uid://dbygm6cvun3up"]
+
+[sub_resource type="GDScript" id="GDScript_4kbpl"]
+script/source = "extends Control
+
+
+enum FileAction {
+	NEW,
+	OPEN,
+	SAVE
+}
+
+
+var current_file_path: String :
+	set(new_file_path):
+		current_file_name = new_file_path.get_slice(\"/\", new_file_path.get_slice_count(\"/\") - 1)
+		current_file_path = new_file_path
+var current_file_name: String :
+	set(new_file_name):
+		if new_file_name.is_empty():
+			new_file_name = \"untitled\"
+			file_name_label.label_settings.font_color = Color.from_hsv(0, 0, .5)
+		else:
+			file_name_label.label_settings.font_color = Color.from_hsv(0, 0, 1)
+		current_file_name = new_file_name
+		file_name_label.text = new_file_name
+var is_file_text_modified := false :
+	set(new_state):
+		file_name_label.text = \"*\" + current_file_name if new_state else current_file_name
+@onready var file_name_label: Label = %FileNameLabel
+
+
+func _on_file_text_text_changed() -> void:
+	is_file_text_modified = true
+func _on_file_action_requested(file_action: FileAction) -> void:
+	match file_action:
+		FileAction.NEW:
+			new_empty_file()
+		FileAction.OPEN:
+			var file_dialog: FileDialog = $FileDialog
+			file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+			file_dialog.visible = true
+		FileAction.SAVE:
+			if current_file_path.is_empty():
+				var file_dialog: FileDialog = $FileDialog
+				file_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+				file_dialog.visible = true
+			else:
+				save_file()
+func _on_file_selected(file_path: String):
+	var file_dialog: FileDialog = $FileDialog
+	match file_dialog.file_mode:
+		file_dialog.FileMode.FILE_MODE_OPEN_FILE:
+			load_file(file_path)
+		file_dialog.FileMode.FILE_MODE_SAVE_FILE:
+			current_file_path = file_path
+			save_file()
+
+
+func _ready() -> void:
+	new_empty_file()
+	
+	var menu_button: MenuButton = %MenuButton
+	menu_button.get_popup().id_pressed.connect(_on_file_action_requested)
+	
+	var file_dialog: FileDialog = $FileDialog
+	file_dialog.file_selected.connect(_on_file_selected)
+
+
+
+func new_empty_file() -> void:
+	current_file_path = \"\"
+	%FileText.clear()
+func load_file(file_path: String) -> void:
+	var file := FileAccess.open(file_path, FileAccess.READ)
+	%FileText.text = file.get_as_text()
+	current_file_path = file_path
+func save_file() -> void:
+	var file := FileAccess.open(current_file_path, FileAccess.WRITE)
+	file.store_string(%FileText.text)
+	is_file_text_modified = false
+"
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3hrml"]
+bg_color = Color(0.172833, 0.172833, 0.172833, 1)
+shadow_color = Color(0, 0, 0, 0.25098)
+shadow_size = 2
+shadow_offset = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_74ktp"]
+bg_color = Color(0.212305, 0.212305, 0.212305, 1)
+
+[sub_resource type="LabelSettings" id="LabelSettings_syv33"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_sni8l"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_465qy"]
+
+[sub_resource type="GDScript" id="GDScript_hoe53"]
+script/source = "extends FileDialog
+
+
+func _ready() -> void:
+	move_to_center()
+"
+
+[sub_resource type="GDScript" id="GDScript_70k33"]
+script/source = "extends AcceptDialog
+
+var no_button: Button
+var cancel_button: Button
+
+func _ready() -> void:
+	move_to_center()
+	
+	no_button = add_button(\"NO\", true)
+	cancel_button = add_cancel_button(\"cancel\")
+"
+
+[node name="Main" type="Node"]
+
+[node name="TextEditor" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = SubResource("GDScript_4kbpl")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TextEditor"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="PanelContainer2" type="PanelContainer" parent="TextEditor/VBoxContainer"]
+z_index = 1
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_3hrml")
+
+[node name="MarginContainer2" type="MarginContainer" parent="TextEditor/VBoxContainer/PanelContainer2"]
+layout_mode = 2
+theme_override_constants/margin_left = 8
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 8
+theme_override_constants/margin_bottom = 8
+
+[node name="HBoxContainer" type="HBoxContainer" parent="TextEditor/VBoxContainer/PanelContainer2/MarginContainer2"]
+layout_mode = 2
+
+[node name="MenuButton" type="MenuButton" parent="TextEditor/VBoxContainer/PanelContainer2/MarginContainer2/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "File"
+item_count = 3
+popup/item_0/text = "New"
+popup/item_1/text = "Open"
+popup/item_1/id = 1
+popup/item_2/text = "Save"
+popup/item_2/id = 2
+
+[node name="PanelContainer" type="PanelContainer" parent="TextEditor/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_74ktp")
+
+[node name="MarginContainer" type="MarginContainer" parent="TextEditor/VBoxContainer/PanelContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/margin_left = 80
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 80
+
+[node name="VBoxContainer" type="VBoxContainer" parent="TextEditor/VBoxContainer/PanelContainer/MarginContainer"]
+layout_mode = 2
+
+[node name="FileNameLabel" type="Label" parent="TextEditor/VBoxContainer/PanelContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+label_settings = SubResource("LabelSettings_syv33")
+
+[node name="HSeparator" type="HSeparator" parent="TextEditor/VBoxContainer/PanelContainer/MarginContainer/VBoxContainer"]
+layout_mode = 2
+
+[node name="FileText" type="TextEdit" parent="TextEditor/VBoxContainer/PanelContainer/MarginContainer/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/normal = SubResource("StyleBoxEmpty_sni8l")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_465qy")
+wrap_mode = 1
+scroll_smooth = true
+scroll_past_end_of_file = true
+
+[node name="FileDialog" type="FileDialog" parent="TextEditor"]
+size = Vector2i(640, 360)
+ok_button_text = "Save"
+access = 2
+script = SubResource("GDScript_hoe53")
+
+[node name="AcceptDialog" type="AcceptDialog" parent="TextEditor"]
+script = SubResource("GDScript_70k33")
+
+[connection signal="text_changed" from="TextEditor/VBoxContainer/PanelContainer/MarginContainer/VBoxContainer/FileText" to="TextEditor" method="_on_file_text_text_changed"]
